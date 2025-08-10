@@ -1,0 +1,261 @@
+# GPT-lib/Cargo.toml
+[package]
+name = "gpt-lib"
+version = "0.1.0"
+edition = "2021"
+description = "AI Model Management Library for RCM - LET imperatives for GPT serving"
+license = "MIT"
+repository = "https://github.com/drQedwards/RCM"
+
+[lib]
+name = "gpt_lib"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.11", features = ["json", "stream"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4"] }
+tabled = "0.15"
+tempfile = "3.0"
+
+# Optional AI framework integrations
+candle-core = { version = "0.4", optional = true }
+ort = { version = "1.16", optional = true }
+llama-cpp-rs = { version = "0.1", optional = true }
+
+[dev-dependencies]
+tempfile = "3.0"
+tokio-test = "0.4"
+
+[features]
+default = ["ollama", "llamacpp"]
+ollama = []
+llamacpp = ["llama-cpp-rs"]
+onnx = ["ort"]
+candle = ["candle-core"]
+huggingface = []
+experimental = ["ollama", "llamacpp", "onnx", "candle", "huggingface"]
+
+# Updated main RCM Cargo.toml with GPT integration:
+
+# [workspace]
+# members = [".", "ARM-lib", "GPT-lib"]
+
+# [dependencies]
+# # ... existing dependencies ...
+# arm-lib = { path = "ARM-lib", optional = true }
+# gpt-lib = { path = "GPT-lib", optional = true }
+
+# [features]
+# default = ["let", "npm", "ppm", "system"]
+# let = []
+# npm = []
+# ppm = []
+# system = []
+# arm = ["dep:arm-lib"]
+# gpt = ["dep:gpt-lib"]
+# experimental = ["let", "npm", "ppm", "system", "arm", "gpt"]
+
+# Directory Structure:
+#
+# rcm/
+# ├── src/
+# │   ├── main.rs              # Main RCM CLI with GPT commands
+# │   ├── npm.rs               # NPM module
+# │   ├── ppm.rs               # PHP Composer module  
+# │   ├── system.rs            # System package module
+# │   ├── workspace.rs         # Workspace management
+# │   ├── config.rs            # Configuration
+# │   ├── util.rs              # Utilities
+# │   └── commands/            # Command implementations
+# │       ├── mod.rs
+# │       ├── init.rs
+# │       ├── add.rs
+# │       ├── letcmd.rs        # LET command (calls ARM + GPT)
+# │       └── ...
+# ├── ARM-lib/                 # Assembly Register Manager
+# │   ├── src/ARM.rs
+# │   ├── asm/ARM.asm
+# │   └── ...
+# ├── GPT-lib/                 # NEW: AI Model Management
+# │   ├── src/
+# │   │   ├── lib.rs           # GPT library entry point
+# │   │   ├── gpt.rs           # AI model management (main implementation)
+# │   │   ├── backends/        # Different serving backends
+# │   │   │   ├── ollama.rs    # Ollama integration
+# │   │   │   ├── llamacpp.rs  # llama.cpp integration
+# │   │   │   ├── onnx.rs      # ONNX Runtime integration
+# │   │   │   └── candle.rs    # Candle ML framework
+# │   │   ├── models/          # Model management
+# │   │   │   ├── registry.rs  # Model registry
+# │   │   │   ├── config.rs    # Model configuration
+# │   │   │   └── downloader.rs # Model downloading
+# │   │   ├── serving/         # Model serving
+# │   │   │   ├── server.rs    # HTTP API server
+# │   │   │   ├── health.rs    # Health checking
+# │   │   │   └── metrics.rs   # Performance metrics
+# │   │   └── integration.rs   # RCM integration layer
+# │   ├── examples/
+# │   │   ├── basic_serving.rs # Basic model serving
+# │   │   ├── multi_model.rs   # Multi-model orchestration
+# │   │   ├── dev_assistant.rs # Development assistant
+# │   │   └── industrial_ai.rs # Industrial automation
+# │   ├── tests/
+# │   │   ├── integration.rs   # Integration tests
+# │   │   ├── models.rs        # Model management tests
+# │   │   └── serving.rs       # Serving tests
+# │   ├── Cargo.toml           # GPT library configuration
+# │   └── README.md            # GPT-specific documentation
+# ├── RCM-cli/                 # C wrapper (existing)
+# └── ...
+
+# Example GPT-lib usage in main RCM CLI:
+
+# src/main.rs integration:
+# 
+# #[cfg(feature = "gpt")]
+# use gpt_lib;
+# 
+# #[derive(Subcommand)]
+# enum Commands {
+#     // ... existing commands ...
+#     
+#     #[cfg(feature = "gpt")]
+#     /// GPT model management and serving
+#     Gpt {
+#         #[command(subcommand)]
+#         cmd: gpt_lib::GptCommands,
+#     },
+# }
+# 
+# // Enhanced LET command in letcmd.rs:
+# pub async fn run(
+#     workspace: &Workspace,
+#     target: &str,
+#     deploy: bool,
+#     // ... other params
+# ) -> Result<()> {
+#     // Check if target is a GPT model
+#     if is_gpt_model(target) {
+#         return handle_gpt_let(workspace, target, deploy, args).await;
+#     }
+#     
+#     // Check if target is ARM register
+#     if is_register_target(target) {
+#         return handle_arm_let(workspace, target, deploy, args).await;
+#     }
+#     
+#     // Default package management
+#     handle_package_let(workspace, target, deploy, args).await
+# }
+
+# Example configurations:
+
+# .rcm/gpt-config.toml
+# [gpt]
+# enabled = true
+# default_backend = "ollama"
+# default_model = "llama2"
+# models_directory = ".rcm/models"
+# 
+# [serving_defaults]
+# host = "localhost"
+# port = 11434
+# context_length = 2048
+# temperature = 0.7
+# max_tokens = 256
+# 
+# [backends.ollama]
+# enabled = true
+# host = "localhost"
+# port = 11434
+# 
+# [backends.llamacpp]
+# enabled = false
+# binary_path = "llama-server"
+# 
+# [model_aliases]
+# "chat" = "llama2"
+# "code" = "codellama"
+# "creative" = "mistral"
+
+# Example workspace manifest integration:
+
+# .rcm/workspace.json
+# {
+#   "version": "1.0.0",
+#   "managers": {
+#     "cargo": { "enabled": true },
+#     "npm": { "enabled": true },
+#     "gpt": { 
+#       "enabled": true,
+#       "config_file": ".rcm/gpt-config.toml"
+#     }
+#   },
+#   "gpt_models": {
+#     "llama2": {
+#       "version": "latest",
+#       "backend": "ollama",
+#       "status": "installed"
+#     },
+#     "codellama": {
+#       "version": "7b",
+#       "backend": "ollama", 
+#       "status": "running",
+#       "endpoint": "http://localhost:11435"
+#     }
+#   }
+# }
+
+# Build configuration for different features:
+
+# Makefile targets:
+# build-gpt: ## Build RCM with GPT support
+# 	@echo "$(CYAN)🤖 Building RCM with GPT support...$(RESET)"
+# 	@cargo build $(RUST_FLAGS) --features gpt
+# 	@echo "$(GREEN)✓ GPT-enabled RCM built$(RESET)"
+# 
+# build-full: ## Build RCM with all features
+# 	@echo "$(CYAN)🚀 Building RCM with all features...$(RESET)"
+# 	@cargo build $(RUST_FLAGS) --features experimental
+# 	@echo "$(GREEN)✓ Full-featured RCM built$(RESET)"
+# 
+# test-gpt: ## Test GPT functionality
+# 	@echo "$(CYAN)🧪 Testing GPT functionality...$(RESET)"
+# 	@cargo test --features gpt gpt_lib::
+# 	@echo "$(GREEN)✓ GPT tests passed$(RESET)"
+
+# Command examples for different scenarios:
+
+# Development workflow:
+# rcm init --features gpt                           # Initialize with GPT support
+# rcm let gpt install llama2                       # Install model
+# rcm let codellama --deploy --creativity 0.2      # Serve for code generation
+# rcm gpt generate codellama "fn main() {" --max-tokens 100
+
+# Industrial automation:
+# rcm robot log-analyze --model codellama          # Use AI for log analysis
+# rcm let gpt serve llama2 --deploy --env production
+# rcm robot maintenance-predict --model llama2 --creativity 0.3
+
+# Multi-language development:
+# rcm add transformers                             # Python AI package
+# rcm add candle-core                              # Rust ML framework
+# rcm let gpt serve llama2 --deploy                # AI model serving
+# rcm let cargo --build --features gpt,arm         # Build with AI+ARM features
+
+# Performance optimization:
+# rcm arm let simd --deploy --computation llm      # Optimize SIMD for LLMs
+# rcm let llama2 --deploy --gpu-layers 32 --arm-accelerated
+# rcm gpt benchmark llama2 --iterations 100       # Performance testing
+
+# Workspace management:
+# rcm workspace check --include-gpt-models        # Health check with AI models
+# rcm workspace sync --validate-gpt-compatibility # Sync with AI validation
+# rcm snapshot --name "ai-enabled" --include-gpt-state
+# rcm sbom --include-gpt-models --out compliance.json
