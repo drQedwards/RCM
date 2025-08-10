@@ -1,0 +1,320 @@
+# ARM-lib Directory Structure and Integration Plan
+
+# Project Structure:
+#
+# rcm/
+# ├── src/
+# │   ├── main.rs              # Main RCM CLI
+# │   ├── npm.rs               # NPM module
+# │   ├── ppm.rs               # PHP Composer module  
+# │   ├── system.rs            # System package module
+# │   ├── workspace.rs         # Workspace management
+# │   ├── config.rs            # Configuration
+# │   ├── util.rs              # Utilities
+# │   └── commands/            # Command implementations
+# │       ├── mod.rs
+# │       ├── init.rs
+# │       ├── add.rs
+# │       ├── letcmd.rs        # LET command (calls ARM)
+# │       └── ...
+# ├── ARM-lib/                 # NEW: Assembly Register Manager
+# │   ├── src/
+# │   │   ├── lib.rs           # ARM library entry point
+# │   │   ├── ARM.rs           # Rust interface (from above)
+# │   │   ├── cli.rs           # ARM CLI commands
+# │   │   ├── benchmarks.rs    # Performance benchmarking
+# │   │   ├── patterns.rs      # Optimization patterns
+# │   │   └── cpu_features.rs  # CPU feature detection
+# │   ├── asm/
+# │   │   ├── ARM.asm          # Assembly implementation (from above)
+# │   │   ├── x86_64.asm       # x86-64 specific optimizations
+# │   │   ├── aarch64.asm      # ARM64 optimizations
+# │   │   └── platform.asm     # Cross-platform wrappers
+# │   ├── tests/
+# │   │   ├── integration.rs   # Integration tests
+# │   │   ├── benchmarks.rs    # Benchmark tests
+# │   │   └── assembly.rs      # Assembly-specific tests
+# │   ├── examples/
+# │   │   ├── crypto_opt.rs    # Cryptographic optimization example
+# │   │   ├── simd_demo.rs     # SIMD demonstration
+# │   │   └── workflow.rs      # Complete ARM workflow
+# │   ├── Cargo.toml           # ARM library configuration
+# │   ├── build.rs             # Build script for assembly
+# │   └── README.md            # ARM-specific documentation
+# ├── RCM-cli/                 # C wrapper (existing)
+# │   ├── Rcm-cli.c
+# │   ├── Rcm-cli.h
+# │   └── Rcm-cli.rs
+# └── ...
+
+# ARM-lib/Cargo.toml
+[package]
+name = "arm-lib"
+version = "0.1.0"
+edition = "2021"
+description = "Assembly Register Manager - LET imperatives for CPU optimization"
+license = "MIT"
+
+[lib]
+name = "arm_lib"
+crate-type = ["cdylib", "rlib", "staticlib"]
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+libc = "0.2"
+
+[build-dependencies]
+cc = "1.0"
+nasm-rs = "0.2"
+
+[features]
+default = ["x86_64", "simd", "benchmarks"]
+x86_64 = []
+aarch64 = []
+simd = []
+avx512 = ["simd"]
+benchmarks = []
+unsafe_optimizations = []
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+raw-cpuid = "10.0"
+
+[[example]]
+name = "crypto_optimization"
+required-features = ["simd"]
+
+[[example]]
+name = "simd_demonstration"
+required-features = ["simd"]
+
+# ARM-lib/build.rs content
+/*
+use std::env;
+use std::path::PathBuf;
+
+fn main() {
+    let target = env::var("TARGET").unwrap();
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    
+    // Build assembly files based on target architecture
+    if target.contains("x86_64") {
+        build_x86_64_asm();
+    } else if target.contains("aarch64") {
+        build_aarch64_asm();
+    }
+    
+    println!("cargo:rerun-if-changed=asm/");
+    println!("cargo:rustc-link-lib=static=arm_asm");
+}
+
+fn build_x86_64_asm() {
+    nasm_rs::Build::new()
+        .file("asm/ARM.asm")
+        .file("asm/x86_64.asm")
+        .flag("-f")
+        .flag("elf64")
+        .compile("arm_asm")
+        .expect("Failed to compile assembly files");
+}
+
+fn build_aarch64_asm() {
+    cc::Build::new()
+        .file("asm/aarch64.asm")
+        .compile("arm_asm");
+}
+*/
+
+# Integration with main RCM Cargo.toml
+# Add to main Cargo.toml:
+
+[workspace]
+members = [".", "ARM-lib"]
+
+[dependencies]
+# ... existing dependencies ...
+arm-lib = { path = "ARM-lib", optional = true }
+
+[features]
+default = ["let", "npm", "ppm", "system"]
+let = []
+npm = []
+ppm = []
+system = []
+arm = ["dep:arm-lib"]  # NEW: ARM feature
+experimental = ["let", "npm", "ppm", "system", "arm"]
+
+# ARM CLI Integration Plan:
+#
+# 1. Extend main RCM CLI to include ARM commands:
+#    rcm let ffmpeg --deploy           # Existing
+#    rcm arm let rax --map --computation crypto  # NEW
+#    rcm arm let simd --deploy --vector-size 256 # NEW
+#
+# 2. Unified LET syntax across package and register management:
+#    rcm let <package> <action>        # Package level
+#    rcm arm let <register> <action>   # Register level
+#
+# 3. Performance integration:
+#    rcm let cargo --build --arm-optimize aggressive
+#    rcm let npm --build --arm-simd --vector-size 512
+#
+# 4. Workspace integration:
+#    rcm workspace check               # Include ARM optimization status
+#    rcm workspace benchmark           # Include register performance
+
+# Example ARM workflows:
+
+# Crypto-optimized build:
+# rcm arm let rax --map --computation crypto
+# rcm let cargo --build --features crypto
+# rcm arm benchmark --pattern crypto --iterations 1000000
+
+# SIMD-accelerated data processing:
+# rcm arm let simd --deploy --pattern sequential --vector-size 256
+# rcm let npm --build --env production
+# rcm arm let rdx --optimize --pattern power2
+
+# High-performance CI pipeline:
+# rcm arm let rax --map --computation loop --flags aggressive,unroll
+# rcm let cargo --test --parallel 8
+# rcm arm metrics
+
+# ARM command examples:
+# 
+# Basic register mapping:
+# rcm arm let rax --map --computation crypto
+# rcm arm let rdx --optimize --pattern sequential
+# rcm arm let simd --deploy --vector-size 256
+#
+# Performance benchmarking:
+# rcm arm let benchmark --pattern crypto --iterations 1000000
+# rcm arm status
+# rcm arm metrics
+#
+# Advanced optimization:
+# rcm arm let rax --map --computation crypto --flags aggressive,vectorize
+# rcm arm let simd --deploy --pattern alternating --vector-size 512
+# rcm arm let rdx --optimize --pattern 0x123456789ABCDEF
+
+# ARM and RCM integration examples:
+#
+# Package installation with register optimization:
+# rcm add ffmpeg
+# rcm arm let simd --deploy --computation multimedia
+# rcm let ffmpeg --deploy --arm-optimized
+#
+# Build pipeline with ARM acceleration:
+# rcm let cargo --build --release
+# rcm arm let rax --map --computation loop
+# rcm let cargo --test --arm-accelerated
+#
+# Workspace health including ARM metrics:
+# rcm workspace check
+# rcm arm metrics
+# rcm workspace benchmark --include-arm
+
+# File contents for key integration points:
+
+# ARM-lib/src/lib.rs
+/*
+//! ARM Library - Assembly Register Manager
+//! 
+//! Provides LET imperatives for CPU register optimization
+
+pub mod arm;
+pub mod cli;
+pub mod benchmarks;
+pub mod patterns;
+pub mod cpu_features;
+
+pub use arm::*;
+pub use cli::*;
+
+// Re-export key types for easy access
+pub use arm::{ArmLet, ArmContext, RegisterOptimization, OptimizationLevel};
+*/
+
+# ARM-lib/src/cli.rs
+/*
+//! CLI interface for ARM commands
+
+use anyhow::Result;
+use clap::{Parser, Subcommand};
+use crate::arm::{ArmLet, cli::*};
+
+pub fn run_arm_cli(args: Vec<String>) -> Result<()> {
+    let cli = ArmCli::parse_from(args);
+    execute_command(cli.command)
+}
+*/
+
+# Integration in main src/main.rs:
+/*
+#[cfg(feature = "arm")]
+use arm_lib;
+
+// Add ARM commands to main CLI enum
+#[derive(Subcommand)]
+enum Commands {
+    // ... existing commands ...
+    
+    #[cfg(feature = "arm")]
+    /// Assembly Register Manager commands
+    Arm {
+        #[command(subcommand)]
+        cmd: arm_lib::cli::ArmCommands,
+    },
+}
+
+// In main command handler:
+#[cfg(feature = "arm")]
+Commands::Arm { cmd } => {
+    arm_lib::cli::execute_command(cmd).await
+}
+*/
+
+# Example usage documentation:
+
+# ARM-lib/examples/crypto_opt.rs
+/*
+//! Cryptographic optimization example using ARM
+//! 
+//! Demonstrates using ARM LET commands for crypto workloads
+
+use arm_lib::{ArmLet, RegisterOptimization};
+use anyhow::Result;
+
+fn main() -> Result<()> {
+    let mut arm = ArmLet::new();
+    
+    // Map RAX for cryptographic operations
+    arm.rax_map("crypto", &["aggressive".to_string(), "vectorize".to_string()])?;
+    
+    // Deploy SIMD for parallel crypto operations
+    arm.simd_deploy(256, "alternating")?;
+    
+    // Benchmark crypto performance
+    let metrics = arm.benchmark_run("crypto", 1_000_000)?;
+    
+    println!("Crypto optimization results:");
+    println!("  Operations/sec: {:.2}", metrics.operations_per_second);
+    println!("  Efficiency: {:.4}", metrics.efficiency_score);
+    
+    Ok(())
+}
+*/
+
+# Complete build command for ARM integration:
+# make build-arm      # Build with ARM support
+# make test-arm       # Test ARM functionality  
+# make bench-arm      # Benchmark ARM performance
+# make install-arm    # Install with ARM support
+
+# Add to main Makefile:
+# build-arm: ## Build RCM with ARM support
+# 	@echo "$(CYAN)🔧 Building RCM with ARM support...$(RESET)"
+# 	@cargo build $(RUST_FLAGS) --features arm
+# 	@echo "$(GREEN)✓ ARM-enabled RCM built$(RESET)"
