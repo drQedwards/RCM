@@ -6,7 +6,10 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
-#[command(name = "let", about = "RCM prime imperative — bind a target, run constrained actions")]
+#[command(
+    name = "let",
+    about = "RCM prime imperative — bind a target, run constrained actions"
+)]
 pub struct LetCli {
     #[command(subcommand)]
     pub command: Option<LetCmd>,
@@ -59,15 +62,19 @@ pub fn execute(cli: LetCli) -> anyhow::Result<LetOutcome> {
                 meta: Default::default(),
             });
         }
-        Some(LetCmd::Run { target, dry_run, json: _ }) => {
+        Some(LetCmd::Run {
+            target,
+            dry_run,
+            json: _,
+        }) => {
             return exec.run_blocking(&target, dry_run || cli.dry_run);
         }
         None => {}
     }
 
-    let target = cli
-        .target
-        .ok_or_else(|| anyhow::anyhow!("usage: rcm let <target> | rcm let init | rcm let run <target>"))?;
+    let target = cli.target.ok_or_else(|| {
+        anyhow::anyhow!("usage: rcm let <target> | rcm let init | rcm let run <target>")
+    })?;
     exec.run_blocking(&target, cli.dry_run)
 }
 

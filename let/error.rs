@@ -5,9 +5,18 @@ use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum LetError {
-    SpecNotFound { target: String, searched: String },
-    InvalidSpec { path: PathBuf, reason: String },
-    Blocked { target: String, reason: String },
+    SpecNotFound {
+        target: String,
+        searched: String,
+    },
+    InvalidSpec {
+        path: PathBuf,
+        reason: String,
+    },
+    Blocked {
+        target: String,
+        reason: String,
+    },
     ActionFailed {
         action: String,
         code: Option<i32>,
@@ -21,7 +30,10 @@ impl fmt::Display for LetError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LetError::SpecNotFound { target, searched } => {
-                write!(f, "spec not found for target `{target}` (looked in {searched})")
+                write!(
+                    f,
+                    "spec not found for target `{target}` (looked in {searched})"
+                )
             }
             LetError::InvalidSpec { path, reason } => {
                 write!(f, "invalid spec `{}`: {reason}", path.display())
