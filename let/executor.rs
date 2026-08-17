@@ -58,7 +58,10 @@ impl LetExecutor {
 
         if !c.platforms.is_empty() && !c.platforms.iter().any(|p| p == &plat || p == "any") {
             ok = false;
-            notes.push(format!("platform `{plat}` not in allowed {:?}", c.platforms));
+            notes.push(format!(
+                "platform `{plat}` not in allowed {:?}",
+                c.platforms
+            ));
         }
 
         for cmd in &c.required_commands {
@@ -253,8 +256,14 @@ impl LetExecutor {
 
         let finished_at = Utc::now();
         let message = match status {
-            LetStatus::Success => format!("let `{}` succeeded ({} actions)", spec.target, actions.len()),
-            LetStatus::DryRun => format!("let `{}` dry-run ({} actions)", spec.target, actions.len()),
+            LetStatus::Success => format!(
+                "let `{}` succeeded ({} actions)",
+                spec.target,
+                actions.len()
+            ),
+            LetStatus::DryRun => {
+                format!("let `{}` dry-run ({} actions)", spec.target, actions.len())
+            }
             LetStatus::Failed => format!("let `{}` failed", spec.target),
             LetStatus::Blocked => format!("let `{}` blocked", spec.target),
         };
