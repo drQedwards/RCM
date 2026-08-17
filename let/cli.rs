@@ -67,7 +67,7 @@ pub fn execute(cli: LetCli) -> anyhow::Result<LetOutcome> {
             dry_run,
             json: _,
         }) => {
-            return exec.run_blocking(&target, dry_run || cli.dry_run);
+            return Ok(exec.run_blocking(&target, dry_run || cli.dry_run)?);
         }
         None => {}
     }
@@ -75,7 +75,7 @@ pub fn execute(cli: LetCli) -> anyhow::Result<LetOutcome> {
     let target = cli.target.ok_or_else(|| {
         anyhow::anyhow!("usage: rcm let <target> | rcm let init | rcm let run <target>")
     })?;
-    exec.run_blocking(&target, cli.dry_run)
+    Ok(exec.run_blocking(&target, cli.dry_run)?)
 }
 
 pub fn print_outcome(outcome: &LetOutcome, json: bool) -> anyhow::Result<()> {
