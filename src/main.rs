@@ -57,8 +57,7 @@ fn real_main() -> anyhow::Result<()> {
             json,
             workspace,
         } => {
-            let workspace = workspace
-                .unwrap_or_else(|| std::env::current_dir().expect("cwd"));
+            let workspace = workspace.unwrap_or_else(|| std::env::current_dir().expect("cwd"));
             let outcome = match sub {
                 Some(LetSub::Init) => {
                     let exec = LetExecutor::new(&workspace);
