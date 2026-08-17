@@ -2,21 +2,55 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Dwarnings
 
 jobs:
-  build:
-
+  build-test:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: fmt
+        run: cargo fmt --all -- --check
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --verbose
+
+      - name: LET smoke (dry-run)
+        run: |
+          cargo run --quiet -- let init
+          cargo run --quiet -- let cargo --dry-run
+          cargo run --quiet -- let cargo --dry-run --json
+          cargo run --quiet -- let pmll-anchor --dry-run || true
+        # pmll-anchor may Block without stellar CLI -- dry-run still exercises resolve path
+
+  # Optional: stricter job when you're ready
+  # let-builtins:
+  #   runs-on: ubuntu-latest
+  #   needs: build-test
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@stable
+  #     - uses: Swatinem/rust-cache@v2
+  #     - run: cargo build --release
+  #     - run: ./target/release/rcm let cargo --dry-run --json
