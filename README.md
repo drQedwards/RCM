@@ -1,182 +1,211 @@
-# RCM CLI – C & Rust Integration
+# RCM — Rust Cargo Manager
 
-This directory contains the C and Rust sources for a **C-callable Rust CLI** for the Rust Cargo Manager (**RCM**).  
-It allows you to:
+**Polyglot package manager** with Cargo, NPM, Composer (PPM), and system packages — powered by the **LET** imperative system.
 
-1. Build **RCM** as a native Rust binary (normal use).
-2. Build **RCM** as a shared library (`.so`/`.dylib`/`.dll`) that can be called from **C** or other languages via FFI.
-3. Provide a small C-based front-end executable that wraps the Rust logic.
+| | |
+|---|---|
+| **crates.io** | [`rcm-rs`](https://crates.io/crates/rcm-rs) |
+| **Binary** | `rcm` |
+| **Version** | 0.8.0 |
+| **License** | MIT |
 
----
-
-## File Overview
-
-| File              | Purpose |
-|-------------------|---------|
-| **RCM-cli.h**     | Public C header exposing `rcm_run()` and `rcm_version()` to C callers. |
-| **RCM-cli.c**     | Minimal C program that calls into the Rust library. Can be compiled into a native CLI binary. |
-| **RCM-cli.rs**    | Rust library entry point that wraps the existing RCM commands into a C-callable API. |
+> **Note:** The crate is published as **`rcm-rs`** because the name `rcm` was already taken on crates.io. The installed command remains **`rcm`**.
 
 ---
 
-## Build the Rust Library
+## Install
 
-In `Cargo.toml`, add:
-
-```toml
-[lib]
-name = "rcm_cli"
-crate-type = ["cdylib", "rlib"]
+```bash
+cargo install rcm-rs
 ```
 
-If you want the `let` macro command enabled, also add:
+Then:
+
+```bash
+rcm --help
+rcm let --help
+```
+
+From source:
+
+```bash
+git clone https://github.com/drQedwards/RCM.git
+cd RCM
+cargo build --release
+./target/release/rcm --help
+```
+
+---
+
+## Quick start
+
+```bash
+# LET is the prime imperative
+rcm let init
+rcm let cargo --dry-run
+rcm let cargo --dry-run --json
+
+# Examples (when full managers are enabled)
+rcm let ffmpeg --deploy --arg input="video.mp4" --arg codec="h264"
+rcm let cargo --build --test --parallel 4
+rcm let npm --deploy --env production
+```
+
+---
+
+## Features
+
+### Multi-language package management
+
+- **Rust (Cargo)** — native integration
+- **Node.js (NPM / Yarn / PNPM)** — `package.json` lifecycle
+- **PHP (Composer / PPM)** — `composer.json` support
+- **System packages** — apt, yum, dnf, brew, chocolatey, winget
+
+### LET imperative system
+
+LET is the bonded command spine of RCM:
+
+```bash
+rcm let <target> [--dry-run] [--json] [--workspace <path>]
+rcm let init
+rcm let run <target>
+```
+
+- Conditional execution (files, platform, env)
+- Parallel jobs
+- Environment-specific configs
+- Structured JSON outcomes
+
+### Architecture highlights
+
+- Async-friendly design
+- Progress / terminal UX (indicatif, console, dialoguer)
+- Workspace-oriented configuration
+- Optional features: `let` (default), `npm`, `ppm`, `system`, `full`
 
 ```toml
 [features]
+default = ["let"]
 let = []
+npm = []
+ppm = []
+system = []
+full = ["let", "npm", "ppm", "system"]
 ```
 
-Then build:
+---
+
+## Usage examples
 
 ```bash
-# Build without `let` support
-cargo build --release
+# Initialize / probe LET
+rcm let init
+rcm let cargo --dry-run
 
-# Build with `let` support
+# Polyglot-style workflows (feature-dependent)
+rcm add serde                 # Rust
+rcm add express               # NPM
+rcm add symfony/console       # Composer
+rcm add ffmpeg                # system
+
+rcm let cargo --build --test --deploy --parallel 8
+rcm workspace sync
+rcm workspace health
+rcm ensure
+```
+
+---
+
+## C / FFI integration
+
+RCM can be built as a native binary **or** as a shared library for C (and other languages).
+
+### Layout
+
+| Path | Purpose |
+|------|---------|
+| `RCM-cli/Rcm-cli.h` | C header (`rcm_run`, `rcm_version`) |
+| `RCM-cli/Rcm-cli.c` | Minimal C front-end |
+| `RCM-cli/Rcm-cli.rs` | Rust ↔ C bridge |
+
+### Build the Rust library
+
+```bash
+cargo build --release
+# with LET (default):
 cargo build --release --features let
 ```
 
-This produces:
-- Linux: `target/release/librcm_cli.so`
-- macOS: `target/release/librcm_cli.dylib`
-- Windows: `target/release/rcm_cli.dll`
+Artifacts:
 
----
+- Linux: `target/release/librcm.so` (lib name follows `[lib] name = "rcm"`)
+- macOS: `target/release/librcm.dylib`
+- Windows: `target/release/rcm.dll`
 
-## Build the C Front-End
-
-Make sure the Rust library is built first, then:
+### Build a C front-end
 
 ```bash
-# Example on Linux/macOS:
-cc -O2 -o rcm-cli RCM-cli.c -L target/release -lrcm_cli
-
-# Run the CLI (calls Rust under the hood)
+cc -O2 -o rcm-cli RCM-cli/Rcm-cli.c -L target/release -lrcm
 ./rcm-cli --help
-./rcm-cli init
-./rcm-cli let cargo --deploy
 ```
 
-On Windows (MinGW example):
-
-```bash
-gcc -O2 -o rcm-cli.exe RCM-cli.c -L target/release -lrcm_cli
-```
-
----
-
-## Using the API from Other C Code
-
-You can embed RCM into other applications by linking to the Rust-built shared library:
+### Embed from C
 
 ```c
-#include "RCM-cli.h"
+#include "RCM-cli/Rcm-cli.h"
 
 int main(void) {
-    const char *ver = rcm_version();
-    printf("Using RCM %s\n", ver);
-    const char *argv[] = {"rcm", "plan"};
-    rcm_run(2, argv);
+    printf("Using RCM %s\n", rcm_version());
+    const char *argv[] = {"rcm", "let", "init"};
+    return rcm_run(3, argv);
 }
 ```
 
-Compile and link against the Rust library the same way as the `RCM-cli.c` example.
+**Notes**
+
+- `rcm_version()` returns a process-lifetime pointer — do not free it.
+- Not designed for concurrent multi-threaded CLI calls without external synchronization.
 
 ---
 
-## Notes
+## Development
 
-- **Memory Management**: `rcm_version()` returns a pointer valid for the lifetime of the process; do **not** free it.
-- **Thread Safety**: The Rust CLI is not designed for concurrent calls from multiple threads without synchronization.
-- **Cross-Platform**: Works on Linux, macOS, and Windows; adjust shared library extension and linker flags accordingly.
-- **License**: GPL-3.0-only (same as RCM).
+```bash
+cargo fmt --all -- --check
+cargo clippy --all-targets -- -D warnings
+cargo build --verbose
+cargo test --verbose
 
+# LET smoke
+cargo run --quiet -- let init
+cargo run --quiet -- let cargo --dry-run
+cargo run --quiet -- let cargo --dry-run --json
+```
 
-I've created a comprehensive RCM (Rust Cargo Manager) implementation that extends far beyond basic Rust package management to become a truly polyglot package manager with NPM, PPM (PHP Composer), and system package imperatives alongside the powerful LET command system.
-🚀 Key Features Implemented
-Multi-Language Package Management
+CI (`.github/workflows/rust.yml`) runs fmt, clippy, build, test, and LET smoke on `main`, and publishes to crates.io on `v*` tags.
 
-🦀 Rust (Cargo) - Native integration with enhanced features
-📦 Node.js (NPM/Yarn/PNPM) - Complete package.json lifecycle management
-🐘 PHP (Composer) - Full composer.json support with optimization
-🔧 System Packages - Cross-platform support (apt, yum, dnf, brew, chocolatey, winget)
+---
 
-LET Imperative System
-bash# Deploy FFmpeg with custom arguments
-rcm let ffmpeg --deploy --arg input="video.mp4" --arg codec="h264"
+## Publish / release
 
-# Build and test across languages
-rcm let cargo --build --test --parallel 4
-rcm let npm --deploy --env production
-rcm let php --build --arg optimize=true
-Production-Ready Architecture
+```bash
+git tag v0.8.0
+git push origin v0.8.0
+```
 
-Async/await throughout for performance
-Progress bars and rich terminal output
-Configuration management with environment overrides
-Security auditing across all package managers
-SBOM & provenance generation for compliance
-Workspace health monitoring with metrics
-Cross-platform compatibility (Linux, macOS, Windows)
+Or locally (with `CARGO_REGISTRY_TOKEN` set):
 
-Professional Build System
-The Makefile includes 30+ targets for:
+```bash
+cargo publish --locked
+```
 
-Multi-stage builds (Rust → C wrapper → integrations)
-Comprehensive testing (unit, integration, security)
-Documentation generation
-CI/CD pipeline support
-Docker containerization
-Performance benchmarking
+---
 
-🎯 Real-World Usage Examples
-bash# Initialize polyglot workspace
-rcm init --managers cargo,npm,composer,system --template polyglot
+## License
 
-# Auto-detect and add packages
-rcm add serde              # Rust crate
-rcm add express            # NPM package  
-rcm add symfony/console    # Composer package
-rcm add ffmpeg             # System package
+MIT — see [LICENSE](LICENSE).
 
-# Imperative workflows
-rcm let ffmpeg --deploy --arg quality="high" --env production
-rcm let cargo --build --test --deploy --parallel 8
+---
 
-# Workspace management
-rcm workspace sync         # Sync all managers
-rcm workspace health       # Check project health
-rcm ensure                 # Install missing dependencies
-🏗️ Architecture Highlights
-Smart Package Detection:
-
-Automatically detects package manager based on name patterns
-Falls back to workspace context (Cargo.toml, package.json, etc.)
-Interactive selection when ambiguous
-
-LET Command Flexibility:
-
-Conditional execution based on file existence, platform, environment
-Parallel execution with configurable job counts
-Environment-specific configurations
-Complex dependency chains
-
-Enterprise Features:
-
-Configuration inheritance and overrides
-Audit trails and compliance reporting
-Workspace snapshots and rollback
-Health scoring and recommendations
-
-This implementation transforms RCM from a simple package manager into a comprehensive polyglot development platform that can handle everything from FFmpeg media processing to complex multi-language CI/CD pipelines, making it ideal for modern development teams working across multiple technology stacks.
-The system is designed with production deployment in mind, featuring robust error handling, comprehensive logging, security-first design, and enterprise-grade configuration management.RetryClaude can make mistakes. Please double-check responses.Continue Sonnet 4
+**RCM** turns package management into a single polyglot surface. **LET** is the prime bonded imperative.
